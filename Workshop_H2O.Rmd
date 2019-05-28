@@ -1,6 +1,6 @@
 ---
-title: "H2O Workshop"
-author: "Gabriel Ristow Cidral / Sara Marin Lopez"
+title: "H2O in practice"
+author: "Gabriel Ristow Cidral"
 date: "11/04/2019"
 output:
   rmdformats::readthedown:
@@ -11,16 +11,35 @@ output:
     highlight: tango
 ---
 
-Introduction to H2O
+<img style="float: right;" src="https://media.timtul.com/media/network22/ubiqum.png">
 
-Load packages and data
+## Introduction to H2O
+
+R interface for 'H2O', the scalable open source machine learning
+platform that offers parallelized implementations of many supervised and
+unsupervised machine learning algorithms such as Generalized Linear
+Models, Gradient Boosting Machines (including XGBoost), Random Forests,
+Deep Neural Networks (Deep Learning), Stacked Ensembles, Naive Bayes, Cox
+Proportional Hazards, K-Means, PCA, Word2Vec, as well as a fully automatic
+machine learning algorithm (AutoML).
+
+H2O is a Java Virtual Machine that is optimized for doing “in memory” processing of distributed, parallel machine learning algorithms on clusters. A “cluster” is a software construct that can be can be fired up on your laptop, on a server, or across the multiple nodes of a cluster of real machines, including computers that form a Hadoop cluster. 
+
+Underneath the covers, the H2O JVM sits on an in-memory, non-persistent key-value (KV) store that uses a distributed JAVA memory model. The KV store holds state information, all results and the big data itself. H2O keeps the data in a heap. When the heap gets full, i.e. when you are working with more data than physical DRAM, H20 swaps to disk. The main point here is that the data is not in R. R only has a pointer to the data, an S4 object containing the IP address, port and key name for the data sitting in H2O.
+
+More info here:
+[Booklet Machine Learning with R and H2O](https://www.h2o.ai/wp-content/uploads/2018/01/RBooklet.pdf)
+
+## Wifi Example
+
+###Load packages and data
 
 ```{r}
-pacman::p_load(readr,h2o, rstudioapi)
+pacman::p_load(readr,h2o, rstudioapi, caret)
 
 ```
 
-Import datasets
+###Import datasets
 
 ```{r}
 
@@ -30,36 +49,38 @@ train <- read_csv("trainingData.csv", na = c("N/A"))
 
 ```
 
+### Launch H2O clusters
+
+Note that the function h20.init() uses the defaults to start up R on your local machine. Users can also provide parameters to specify an IP address and port number in order to connect to a remote instance of H20 running on a cluster. 
 
 ```{r}
 
-#To launch the H2O cluster, write –
+#To launch the H2O cluster, write 
 
-localH2O <- h2o.init(nthreads = -1)
-
-h2o.init()
+h2o.init(nthreads = -1)
 
 #data to h2o cluster
 train.h2o <- as.h2o(train)
 test.h2o <- as.h2o(validation)
 
-#check column index number
-colnames(train.h2o)
-
 #dependent variable (Lat)
-y.dep <- 369
+
+names(train.h2o)
+train.h2o[,523] <- as.factor(train.h2o[,523])
+
+y.dep <- 523
 
 #independent variables (WAPS)
-x.indep <- c(1:367)
+x.indep <- c(1:520)
 
-regression.model <- h2o.glm( y = y.dep, x = x.indep, training_frame = train.h2o, family = "gaussian")
-
-h2o.performance(regression.model)
-
-#make predictions
-predict.reg <- as.data.frame(h2o.predict(regression.model, test.h2o))
-
-postResample(predict.reg, validation.center$LATITUDE)
+# regression.model <- h2o.glm( y = y.dep, x = x.indep, training_frame = train.h2o, family = "gaussian")
+# 
+# h2o.performance(regression.model)
+# 
+# #make predictions
+# predict.reg <- as.data.frame(h2o.predict(regression.model, test.h2o))
+# 
+# postResample(predict.reg, validation$LATITUDE)
 
 #Random Forest
 system.time(
@@ -73,7 +94,9 @@ h2o.varimp(rforest.model)
 #making predictions on unseen data
 system.time(predict.rforest <- as.data.frame(h2o.predict(rforest.model, test.h2o)))
 
-postResample(predict.rforest, validation.center$LATITUDE)
+test.h2o[,523] <- as.factor(test.h2o[,523])
+
+confusionMatrix(predict.rforest, test.h2o[ , 523])
 
 ```
 
@@ -87,7 +110,7 @@ h2o.performance (gbm.model)
 
 predict.gbm <- as.data.frame(h2o.predict(gbm.model, test.h2o))
 
-postResample(predict.gbm, validation.center$LATITUDE)
+postResample(predict.gbm, validation$LATITUDE)
 
 ```
 
